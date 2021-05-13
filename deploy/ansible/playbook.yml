@@ -1,0 +1,44 @@
+- name: Build locally
+  hosts: localhost
+  connection: local
+
+  tasks:
+    - name: Test
+      shell: cargo test
+      args:
+        chdir: ../..
+
+    - name: Build binary
+      shell: cargo build --target=armv7-unknown-linux-gnueabihf --release
+      args:
+          chdir: ../..
+
+- name: Deploy
+  hosts: raspberry
+  become: yes
+
+  tasks:
+    - name: Prepare dir
+      file:
+        path: /home/pi/apps
+        state: directory
+        mode: '0755'
+
+    - name: Copy binary
+      copy:
+        src: ../../target/armv7-unknown-linux-gnueabihf/release/raidar
+        dest: /home/pi/apps/
+        mode: '0777'
+
+    - name: Copy systemd config
+      copy:
+        src: ../raidar.service
+        dest: /etc/systemd/system/raidar.service
+
+    - name: Run service
+      systemd:
+        name: raidar
+        daemon_reload: true
+        state: restarted
+        enabled: true
+
